@@ -1,0 +1,11 @@
+# Claude Code's own local session/tooling state - launch.json has a
+# machine-specific absolute path, scheduled_tasks.lock is pure per-session
+# runtime state. Each subproject (backend/, frontend/, engine/) has its own
+# .gitignore for its build artifacts/dependencies/.env - this file only
+# covers what's specific to the repo root.
+.claude/
+
+# Project reference docs the user has asked to keep off GitHub, 2026-09-15 -
+# kept locally (still actively used to track the project), just not shared.
+CLAUDE.md
+TODO.md

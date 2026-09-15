@@ -1,0 +1,26 @@
+# Reverse proxy + automatic HTTPS (Let's Encrypt) for Grudge - frontend and
+# backend both served from this one server (confirmed - see CLAUDE.md S3).
+# Replace grudge.example.com below with the real subdomain once picked (see
+# ../README.md). Caddy's reverse_proxy handles WebSocket upgrades
+# automatically - no extra config needed for /ws/matchmaking, /ws/sim-rooms,
+# /ws/tournaments.
+#
+# Two web addresses on the same server, not one - the backend keeps its own
+# subdomain (api.grudge.example.com) rather than sharing a path prefix like
+# /api on the frontend's own address. The backend's routes aren't all under
+# one shared prefix (e.g. /auth/google/login, /me, /automata, /friends all
+# sit at the root), so a path-based split would mean hand-listing every
+# backend route in this file and keeping it in sync forever - a second
+# subdomain needs zero backend/frontend code changes and can't drift out of
+# sync. Both DNS records point at the same server IP; Caddy tells them apart
+# by which hostname the request came in on.
+
+grudge.example.com {
+	root * /opt/grudge/frontend/dist
+	file_server
+	try_files {path} /index.html
+}
+
+api.grudge.example.com {
+	reverse_proxy 127.0.0.1:8000
+}

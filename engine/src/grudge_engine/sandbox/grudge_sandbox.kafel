@@ -1,0 +1,53 @@
+// nsjail/kafel seccomp policy for the Grudge sandbox's jailed automaton
+// process. Denylist shape (default ALLOW, explicit KILL_PROCESS list) rather
+// than an allowlist: CPython's real syscall surface is broad and varies by
+// version/build, so hand-enumerating everything it needs risks either
+// breaking legitimate matches or - worse - silently omitting something,
+// discovered only as an intermittent failure. The namespaces (network/mount/
+// PID), the read-only chroot + shadowed paths, and the rlimits are the
+// primary isolation already (see nsjail_backend.py's module docstring); this
+// policy is the defense-in-depth layer, matching the well-established shape
+// of Docker/runc/containerd's own default seccomp profile: block the
+// specific syscalls with no legitimate use for a short-lived Python
+// interpreter and real potential for container/namespace escape or kernel
+// exploitation, allow everything else.
+//
+// Verified against the real nsjail/kafel toolchain (not just written from a
+// syscall list and assumed correct) - see test_nsjail_backend.py's
+// test_seccomp_policy_* tests: a plain Python program and a full reference-
+// bot match still run cleanly under this policy, and both ptrace and mount
+// (representative denied syscalls) are actually killed.
+//
+// A few syscalls that would belong on this list by the same reasoning were
+// left out because this kafel/nsjail build doesn't recognize their names on
+// x86_64 (either not defined for this architecture at all, like vm86/
+// vm86old, or under a different name, like umount vs. umount2's underlying
+// syscall) - kafel fails to compile the whole policy on an unrecognized
+// name, so getting every one of these exactly right for the real build
+// matters more than an exhaustive list.
+POLICY grudge_sandbox {
+  KILL_PROCESS {
+    // process introspection / manipulation of other processes
+    ptrace, process_vm_readv, process_vm_writev, kcmp,
+    // kernel module loading
+    init_module, finit_module, delete_module, create_module,
+    query_module, get_kernel_syms,
+    // mount/filesystem namespace manipulation
+    mount, umount, pivot_root, chroot, name_to_handle_at,
+    open_by_handle_at, nfsservctl,
+    // namespace/personality manipulation from inside the jail
+    unshare, setns, personality, modify_ldt,
+    // system-wide state changes
+    reboot, kexec_load, kexec_file_load, acct, swapon, swapoff,
+    settimeofday, clock_settime, clock_adjtime, sethostname,
+    setdomainname, syslog, sysfs, quotactl,
+    // kernel keyring / BPF / perf - historically rich privilege-escalation
+    // and info-leak surface
+    add_key, request_key, keyctl, bpf, perf_event_open,
+    // legacy/rarely-needed, historically exploitable
+    uselib, ustat, iopl, ioperm, lookup_dcookie,
+    move_pages, mbind, set_mempolicy, get_mempolicy, userfaultfd
+  }
+}
+USE grudge_sandbox
+DEFAULT ALLOW

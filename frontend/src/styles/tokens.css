@@ -1,0 +1,53 @@
+/* Design tokens - the one place CLAUDE.md §5's visual identity ("dark gray
+   base, maroon/dark-red accent, sharp corners, not the rounded-corner AI
+   look") is enforced. Every component should read colors/spacing/radius
+   from here, never hardcode a hex value or border-radius inline.
+*/
+:root {
+  --color-bg: #17181a;
+  --color-bg-panel: #1f2123;
+  --color-bg-panel-raised: #27292c;
+  --color-border: #34373b;
+  --color-text: #e8e9ea;
+  --color-text-dim: #9a9da2;
+  --color-accent: #b8434a;
+  --color-accent-dim: #832f34;
+  /* Text color for content sitting ON TOP of --color-accent (e.g. a primary
+     button's label). Maroon is darker than the green it replaced, so
+     near-black text (what the green accent used) no longer has enough
+     contrast - light text is needed here instead. */
+  --color-accent-contrast-text: #f5e9ea;
+  /* Shifted toward orange so it stays visually distinct from the maroon
+     accent above - a red-on-red danger/accent pairing would be hard to
+     tell apart at a glance. */
+  --color-danger: #e0673f;
+  --color-warning: #d9a441;
+  /* Game-move semantics (RoundLog's cooperate/defect coloring) are
+     deliberately NOT tied to --color-accent - a brand-color swap (e.g. this
+     one, green -> maroon) shouldn't also quietly break the intuitive
+     good-move/bad-move color coding those two need independently of brand
+     identity. */
+  --color-move-cooperate: #4ea86f;
+  --color-move-defect: var(--color-danger);
+
+  --radius: 0; /* sharp corners, everywhere, deliberately */
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+
+  --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
+  /* Brand wordmark only ("Grudge" in the header/hero) - never body text.
+     Loaded via Google Fonts in index.html. Falls back to --font-sans if the
+     font hasn't loaded yet/fails, rather than a generic serif/sans default. */
+  --font-display: "ADLaM Display", var(--font-sans);
+
+  --font-size-sm: 0.875rem;
+  --font-size-base: 1rem;
+  --font-size-lg: 1.25rem;
+  --font-size-xl: 1.75rem;
+}

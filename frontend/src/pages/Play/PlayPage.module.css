@@ -1,0 +1,9 @@
+.content {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: var(--space-4);
+}
+
+.tabBody {
+  padding-top: var(--space-4);
+}

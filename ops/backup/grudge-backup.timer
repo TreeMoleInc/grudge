@@ -1,0 +1,14 @@
+[Unit]
+Description=Run Grudge Postgres backup nightly
+
+[Timer]
+# 03:17 UTC - off the hour (avoids piling onto whatever else fires at :00
+# on the box) and inside this project's expected lowest-traffic window.
+OnCalendar=*-*-* 03:17:00
+# If the VPS was down/rebooting at 03:17, run as soon as it's back instead
+# of silently waiting a full day for the next scheduled slot.
+Persistent=true
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target

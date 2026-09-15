@@ -1,0 +1,18 @@
+# Shape-only example - the real file (already created, see ../README.md
+# Transfer step 11) is sent separately and never committed. It lives at
+# /var/lib/grudge-backup/.config/rclone/rclone.conf, owned by grudge-backup.
+#
+# Cloudflare R2 is the reference choice here (10GB free, no egress charges -
+# fits this project's scale, matches CLAUDE.md's cost-conscious infra
+# philosophy) but rclone speaks dozens of backends behind the same
+# `remote:path` interface - swapping providers later is a config change
+# here, not a script change.
+#
+# [r2]
+# type = s3
+# provider = Cloudflare
+# access_key_id = <R2 access key id>
+# secret_access_key = <R2 secret access key>
+# endpoint = https://<account id>.r2.cloudflarestorage.com
+# region = auto
+# acl = private

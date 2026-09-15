@@ -1,0 +1,14 @@
+[Unit]
+Description=Grudge Postgres backup
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/grudge-backup.env
+ExecStart=/opt/grudge/ops/backup/backup_db.sh
+# Least-privilege: a dedicated system user with SELECT-only access to the DB
+# and write access to BACKUP_DIR, nothing else - not root, not the app's own
+# DB user (which needs write access this job never should). See ../README.md.
+User=grudge-backup
+Group=grudge-backup

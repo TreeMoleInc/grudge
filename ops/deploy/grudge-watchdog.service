@@ -1,0 +1,21 @@
+[Unit]
+Description=Grudge watchdog (stale-job detection, matchmaking/session sweeps)
+After=network-online.target postgresql.service grudge-backend.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/grudge/backend
+EnvironmentFile=/etc/grudge.env
+# Independent process from the worker on purpose (CLAUDE.md S3) - it can't
+# detect the worker's own death from inside the worker. Also runs the
+# matchmaking heartbeat-eviction sweep and the expired-session cleanup sweep
+# on the same 15-30s cadence, rather than needing a fourth process.
+ExecStart=/opt/grudge/backend/.venv/bin/python -m grudge_backend.watchdog
+Restart=always
+RestartSec=5
+User=grudge
+Group=grudge
+
+[Install]
+WantedBy=multi-user.target

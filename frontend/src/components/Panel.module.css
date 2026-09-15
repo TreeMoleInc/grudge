@@ -1,0 +1,10 @@
+.panel {
+  background: var(--color-bg-panel);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  padding: var(--space-4);
+}
+
+.raised {
+  background: var(--color-bg-panel-raised);
+}

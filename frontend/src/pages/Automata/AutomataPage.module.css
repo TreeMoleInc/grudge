@@ -1,0 +1,66 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+/* Hidden on desktop, shown only under the mobile breakpoint below - this is
+   the ONLY thing that changes between desktop and mobile for this page; the
+   panels themselves are identical markup/components at every width. */
+.mobileTabs {
+  display: none;
+}
+
+.panes {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 260px 1fr 320px;
+  overflow: hidden;
+}
+
+.sidebarPane,
+.statsPane {
+  overflow-y: auto;
+  border-right: 1px solid var(--color-border);
+}
+
+.statsPane {
+  border-right: none;
+  border-left: 1px solid var(--color-border);
+}
+
+.editorPane {
+  overflow: hidden;
+  min-width: 0;
+}
+
+.emptyState {
+  padding: var(--space-5);
+  color: var(--color-text-dim);
+  text-align: center;
+}
+
+/* Mobile: one panel visible at a time, selected via the tab bar's
+   data-active-panel on the wrapper - inert above this breakpoint. */
+@media (max-width: 768px) {
+  .mobileTabs {
+    display: flex;
+  }
+
+  .panes {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebarPane,
+  .editorPane,
+  .statsPane {
+    display: none;
+    border: none;
+  }
+
+  .panes[data-active-panel="sidebar"] .sidebarPane,
+  .panes[data-active-panel="editor"] .editorPane,
+  .panes[data-active-panel="stats"] .statsPane {
+    display: block;
+  }
+}

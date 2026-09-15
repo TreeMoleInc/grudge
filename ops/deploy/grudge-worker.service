@@ -1,0 +1,22 @@
+[Unit]
+Description=Grudge tournament worker
+After=network-online.target postgresql.service grudge-backend.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/grudge/backend
+EnvironmentFile=/etc/grudge.env
+# Claims queued jobs and runs tournaments via grudge_engine, ticking
+# heartbeat_at every 5s while processing (CLAUDE.md S3) - this is the
+# process watchdog.py checks for staleness, and the one that must be running
+# under SANDBOX_BACKEND=nsjail (see /etc/grudge.env) before any real user
+# code reaches it.
+ExecStart=/opt/grudge/backend/.venv/bin/python -m grudge_backend.worker
+Restart=always
+RestartSec=5
+User=grudge
+Group=grudge
+
+[Install]
+WantedBy=multi-user.target

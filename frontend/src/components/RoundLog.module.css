@@ -1,0 +1,22 @@
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-sm);
+  font-family: var(--font-mono);
+  max-height: 400px;
+}
+
+.table th,
+.table td {
+  padding: var(--space-1) var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+  text-align: left;
+}
+
+.cooperate {
+  color: var(--color-move-cooperate);
+}
+
+.defect {
+  color: var(--color-move-defect);
+}

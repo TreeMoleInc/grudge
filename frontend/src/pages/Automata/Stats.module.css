@@ -1,0 +1,124 @@
+.stats {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  overflow-y: auto;
+  height: 100%;
+}
+
+.hint {
+  color: var(--color-text-dim);
+  font-size: var(--font-size-sm);
+}
+
+.recordGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-3);
+  margin: 0;
+}
+
+.recordGrid dt {
+  color: var(--color-text-dim);
+  font-size: var(--font-size-sm);
+}
+
+.recordGrid dd {
+  margin: 0;
+  font-size: var(--font-size-lg);
+}
+
+.tableWrap {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-sm);
+}
+
+.table th {
+  text-align: left;
+  color: var(--color-text-dim);
+  font-weight: 600;
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.table td {
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.nameButton {
+  background: none;
+  border: none;
+  color: var(--color-accent);
+  cursor: pointer;
+  padding: 0;
+  font-size: inherit;
+  text-decoration: underline;
+}
+
+.detailCell {
+  background: var(--color-bg-panel-raised);
+}
+
+.matchList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.matchRow + .matchRow {
+  border-top: 1px solid var(--color-border);
+}
+
+.matchLink {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+  background: none;
+  border: none;
+  color: var(--color-text);
+  padding: var(--space-2) 0;
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  text-align: left;
+}
+
+.matchLink:hover {
+  color: var(--color-accent);
+}
+
+.historyList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.historyRow {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-2);
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-text);
+  padding: var(--space-2) 0;
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  text-align: left;
+}
+
+.historyRow:hover {
+  color: var(--color-accent);
+}
+
+.typeBadge {
+  color: var(--color-text-dim);
+}

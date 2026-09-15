@@ -1,0 +1,70 @@
+.header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  padding: var(--space-3) var(--space-5);
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-bg-panel);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  font-size: var(--font-size-lg);
+  color: var(--color-accent);
+  text-decoration: none;
+}
+
+.logo {
+  width: 28px;
+  height: auto;
+}
+
+.nav {
+  display: flex;
+  gap: var(--space-4);
+}
+
+.nav a {
+  color: var(--color-text);
+  text-decoration: none;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+}
+
+.nav a:hover {
+  color: var(--color-accent);
+}
+
+.userArea {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.rating {
+  color: var(--color-text-dim);
+  font-size: var(--font-size-sm);
+}
+
+/* Below this width the single-row layout doesn't fit (brand + 4 nav links +
+   notifications + username all in one flex row with no wrap) and content
+   was overflowing past the header's own box. Same breakpoint as the
+   Automata page's tab-switcher (AutomataPage.module.css) for consistency. */
+@media (max-width: 768px) {
+  .header {
+    flex-wrap: wrap;
+    row-gap: var(--space-2);
+  }
+
+  .nav {
+    order: 3;
+    flex-basis: 100%;
+    justify-content: space-between;
+  }
+}

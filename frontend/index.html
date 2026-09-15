@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <!-- Cache-busting query param: browsers cache favicons far more
+         aggressively/separately than normal page assets, sometimes ignoring
+         a plain reload entirely - a genuinely different URL is the reliable
+         way to force a stale cached favicon to actually refresh. Bump the
+         version whenever logo.png's content changes again. -->
+    <link rel="icon" type="image/png" href="/logo.png?v=2" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Grudge</title>
+    <!-- ADLaM Display: the brand wordmark font (CLAUDE.md §5 visual identity),
+         used only for the "Grudge" name itself, never body text - see
+         --font-display in tokens.css. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=ADLaM+Display&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

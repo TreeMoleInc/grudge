@@ -1,0 +1,56 @@
+[project]
+name = "grudge-backend"
+version = "0.1.0"
+description = "Core backend for Grudge: data model, auth, and CRUD APIs (Phase 2)"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "sqlalchemy[asyncio]>=2.0",
+    "asyncpg>=0.29",
+    "alembic>=1.13",
+    "authlib>=1.3",
+    "httpx>=0.27",
+    "pydantic>=2.7",
+    "pydantic-settings>=2.3",
+    "itsdangerous>=2.2",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "pytest-asyncio>=0.24", "respx>=0.21", "ruff>=0.6"]
+
+# grudge-engine (Phase 1, ../engine) is a real runtime dependency as of Phase 3 - the
+# worker calls run_tournament(...) directly - but it's a local monorepo package, not
+# published to PyPI, so it isn't listed in `dependencies` above (a relative file:// path
+# there isn't portable/standard PEP 508). Install it explicitly: see backend/README.md.
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+# A session-scoped event loop is required here: the `engine` fixture (and its
+# asyncpg connection pool) is session-scoped for speed, but asyncpg connections
+# are bound to the event loop that created them - a per-test event loop (the
+# default) breaks that pool on the second test with a confusing
+# "another operation is in progress" InterfaceError.
+asyncio_default_fixture_loop_scope = "session"
+asyncio_default_test_loop_scope = "session"
+markers = [
+    "integration: requires a real reachable Postgres via DATABASE_URL",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+# B008 (function-call-in-default-argument) is a false positive for FastAPI's
+# Depends(...)/Query(...) pattern in parameter defaults - that's the idiomatic,
+# required way to declare a FastAPI dependency, not a bug.
+ignore = ["B008"]

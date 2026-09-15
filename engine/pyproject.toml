@@ -1,0 +1,31 @@
+[project]
+name = "grudge-engine"
+version = "0.1.0"
+description = "Sandbox + tournament engine for the Grudge iterated Prisoner's Dilemma game"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "pytest-timeout>=2", "ruff>=0.6"]
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "nsjail: requires a real nsjail binary and Linux namespaces (run under WSL2)",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+# COOPERATE/DEFECT/C/D are ambient names the shim injects into an automaton's
+# namespace at runtime (see shim/runtime.py) - never imported, so plain F821
+# would otherwise flag every reference_bots/*.py file (which are real automaton
+# source, written exactly as a player would write them).
+builtins = ["COOPERATE", "DEFECT", "C", "D"]

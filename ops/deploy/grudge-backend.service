@@ -1,0 +1,21 @@
+[Unit]
+Description=Grudge backend (FastAPI/uvicorn)
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/grudge/backend
+EnvironmentFile=/etc/grudge.env
+# Loopback only - Caddy (or whatever reverse proxy) terminates TLS and is the
+# only thing that talks to this port. No --reload (that's dev-only, via
+# `backend/README.md`'s uvicorn invocation) and no extra worker processes -
+# see ../README.md for why a single uvicorn process is enough at this scale.
+ExecStart=/opt/grudge/backend/.venv/bin/python -m uvicorn grudge_backend.main:app --host 127.0.0.1 --port 8000
+Restart=always
+RestartSec=5
+User=grudge
+Group=grudge
+
+[Install]
+WantedBy=multi-user.target
