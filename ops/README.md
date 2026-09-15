@@ -19,20 +19,23 @@ because it holds real passwords.
 ## Fastest path: the install script
 
 `install.sh` does every step below that happens **on the container**, in order,
-so you don't have to run them by hand. First do the four things it can't do for
-you (they're outside the container): turn on container nesting from the Proxmox
-host (step 1 below), put the two files sent to you privately — `grudge.env` and
-`rclone.conf` — in the folder you'll run it from, point DNS at this server, and
-add the Google sign-in address (steps 1, 10, and the testing section). Then, on
-the container:
+so you don't have to run them by hand. First, clone the code to `/opt/grudge`
+with your own GitHub access, and put the two files sent to you privately —
+`grudge.env` and `rclone.conf` — in `/opt/grudge/ops` next to the script:
 
 ```bash
-sudo DOMAIN=<domain> REPO_URL=<repo-url> ./install.sh
+sudo git clone <repo-url> /opt/grudge
+# then copy grudge.env and rclone.conf into /opt/grudge/ops
+sudo DOMAIN=<domain> /opt/grudge/ops/install.sh
 ```
 
-It asks for anything it still needs, stops immediately if the sandbox check
-fails, and is safe to run again if it stops partway. The numbered steps below
-are what it runs — read them if a step fails or you'd rather do it by hand.
+It asks for the domain if you don't pass it, stops immediately if the sandbox
+check fails, and is safe to run again if it stops partway. It still can't do the
+things that live outside the container — turn on container nesting from the
+Proxmox host (step 1 below), point DNS at this server, and add the Google
+sign-in address (steps 1, 10, and the testing section) — so do those too. The
+numbered steps below are what the script runs; read them if a step fails or
+you'd rather do it by hand.
 
 ## 1. Transfer — get it running
 

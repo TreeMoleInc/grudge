@@ -11,42 +11,45 @@
 # and just run it again from the top.
 #
 # ---------------------------------------------------------------------------
-# BEFORE YOU RUN THIS - four things the script cannot do for you:
+# BEFORE YOU RUN THIS - five things the script cannot do for you:
 #
-#   1. Turn on nesting for the container. On the Proxmox HOST (not in here):
+#   1. Clone the code to /opt/grudge, using your own GitHub access:
+#        sudo git clone <repo-url> /opt/grudge
+#      Then run this script from there: sudo /opt/grudge/ops/install.sh
+#      (The script no longer clones - everything downstream, the services and
+#      the web server, expects the code at exactly /opt/grudge.)
+#
+#   2. Turn on nesting for the container. On the Proxmox HOST (not in here):
 #        pct set <container-id> --features nesting=1
 #        pct reboot <container-id>
 #      Without it, the sandbox test in step 4 fails and the script stops.
 #
-#   2. Put the two secret files next to this script (they are sent to you
+#   3. Put the two secret files next to this script (they are sent to you
 #      privately, never in the repo):
 #        grudge.env      - the app's real passwords/keys
 #        rclone.conf     - the off-site backup storage key
-#      By default the script looks for them in the folder you run it from;
-#      set SECRETS_DIR=/path/to/folder to point somewhere else.
+#      By default the script looks for them in the folder you run it from
+#      (/opt/grudge/ops); set SECRETS_DIR=/path/to/folder to point elsewhere.
 #
-#   3. Point two DNS records at this server's public IP:
+#   4. Point two DNS records at this server's public IP:
 #        grudge.<domain>       and       api.grudge.<domain>
 #      (Needed for HTTPS in step 10. The app still installs without it; it
 #      just can't get certificates until DNS is live.)
 #
-#   4. Add the production sign-in address in Google Cloud Console:
+#   5. Add the production sign-in address in Google Cloud Console:
 #        https://api.grudge.<domain>/auth/google/callback
 #      (Sign-in won't work until this is added - separate from the server.)
 #
 # ---------------------------------------------------------------------------
-# HOW TO RUN:
+# HOW TO RUN (after cloning to /opt/grudge, per step 1 above):
 #
-#   sudo DOMAIN=example.com REPO_URL=https://github.com/OWNER/grudge.git ./install.sh
+#   sudo DOMAIN=example.com /opt/grudge/ops/install.sh
 #
-# It will ask for anything it still needs (the domain, the repo address, a
-# GitHub token if the repo is private). You can also set these ahead of time as
-# environment variables to run it unattended:
+# It will ask for the domain if you don't pass it. You can also set these
+# ahead of time as environment variables to run it unattended:
 #
 #   DOMAIN         the domain the two subdomains live under, e.g. example.com
 #                  (the script builds grudge.<domain> and api.grudge.<domain>)
-#   REPO_URL       the repo's https address, e.g. https://github.com/OWNER/grudge.git
-#   GITHUB_TOKEN   a GitHub token that can read the repo (leave empty if public)
 #   SECRETS_DIR    where grudge.env and rclone.conf are (default: this folder)
 #   BEHIND_PROXY   set to 1 if another reverse proxy already handles HTTPS for
 #                  your containers - Caddy then serves plain http on port 80 and
@@ -85,8 +88,15 @@ ask DOMAIN "Domain (e.g. example.com, no https:// and no 'grudge.' prefix)"
 FRONTEND_URL="https://grudge.${DOMAIN}"
 BACKEND_URL="https://api.grudge.${DOMAIN}"
 
-ask REPO_URL "Repo https URL (e.g. https://github.com/OWNER/grudge.git)"
-[ -n "$REPO_URL" ] || die "A repo URL is required."
+# The code must already be cloned to /opt/grudge (you do that yourself, with
+# your own GitHub access - see the header). Everything downstream expects it
+# exactly there, so check before doing anything.
+if [ ! -e /opt/grudge/backend/pyproject.toml ]; then
+  die "The code isn't at /opt/grudge yet. Clone it there first, with your own
+  GitHub access, then run this script from it:
+    sudo git clone <repo-url> /opt/grudge
+    sudo DOMAIN=${DOMAIN} /opt/grudge/ops/install.sh"
+fi
 
 ENV_SRC="${SECRETS_DIR%/}/grudge.env"
 RCLONE_SRC="${SECRETS_DIR%/}/rclone.conf"
@@ -98,7 +108,7 @@ fi
 
 info "Website will be:  $FRONTEND_URL"
 info "Backend will be:  $BACKEND_URL"
-info "Installing from:  $REPO_URL"
+info "Code found at:    /opt/grudge"
 [ "$BEHIND_PROXY" = "1" ] && info "Mode: behind an existing reverse proxy (Caddy serves plain http)."
 printf '\n'
 read -r -p "  Look right? Type yes to continue: " CONFIRM </dev/tty
@@ -123,29 +133,19 @@ else
 fi
 
 # ===========================================================================
-# 3. Create the app's user and download the code
+# 3. Create the app's user and prepare the code
 # ===========================================================================
-step "3/11  Creating the grudge user and downloading the code"
+step "3/11  Creating the grudge user and preparing the code"
 
 id -u grudge >/dev/null 2>&1 \
   && info "User 'grudge' already exists - skipping." \
   || useradd --system --create-home --home-dir /home/grudge --shell /usr/sbin/nologin grudge
 
-if [ -d /opt/grudge/.git ]; then
-  info "/opt/grudge already cloned - pulling latest instead."
-  git -C /opt/grudge pull --ff-only || warn "Could not fast-forward /opt/grudge - leaving as-is."
-else
-  # Token (if any) is used only for this clone, then stripped from the stored
-  # remote URL so it isn't left sitting in /opt/grudge/.git/config.
-  ask GITHUB_TOKEN "GitHub token to read the repo (press Enter if the repo is public)"
-  if [ -n "${GITHUB_TOKEN:-}" ]; then
-    AUTH_URL="${REPO_URL/https:\/\//https://x-access-token:${GITHUB_TOKEN}@}"
-    git clone "$AUTH_URL" /opt/grudge
-    git -C /opt/grudge remote set-url origin "$REPO_URL"
-  else
-    git clone "$REPO_URL" /opt/grudge
-  fi
-fi
+# The code is already at /opt/grudge (checked at the top). It was cloned by
+# root (or whoever ran git clone); hand it to the grudge user the services
+# run as. apt/git aren't needed for cloning here anymore, but the build below
+# and other steps still need git/curl/python3-venv - installed in step 2.
+info "Handing /opt/grudge to the grudge user."
 chown -R grudge:grudge /opt/grudge
 
 info "Creating the Python environment and installing the backend + engine..."
