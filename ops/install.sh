@@ -226,11 +226,16 @@ BACKUP_PW="$(grep '^PGPASSWORD=' /etc/grudge-backup.env | cut -d= -f2-)"
 
 psql_su() { sudo -u postgres psql -v ON_ERROR_STOP=1 "$@"; }
 
-# App role + database (create only if missing - never resets an existing password).
+# App role + database (create only if missing - never resets an existing
+# password). The password is passed as a psql variable and quoted with :'pw',
+# which safely escapes any character - but that substitution only happens when
+# psql reads from stdin/a file, NOT from -c, so these run via a here-doc.
 if psql_su -tAc "SELECT 1 FROM pg_roles WHERE rolname='grudge'" | grep -q 1; then
   info "Role 'grudge' already exists - skipping."
 else
-  psql_su -v pw="$APP_PW" -c "CREATE ROLE grudge LOGIN PASSWORD :'pw'"
+  psql_su -v pw="$APP_PW" <<'SQL'
+CREATE ROLE grudge LOGIN PASSWORD :'pw';
+SQL
 fi
 if psql_su -tAc "SELECT 1 FROM pg_database WHERE datname='grudge'" | grep -q 1; then
   info "Database 'grudge' already exists - skipping."
@@ -242,7 +247,9 @@ fi
 if psql_su -tAc "SELECT 1 FROM pg_roles WHERE rolname='grudge_backup_ro'" | grep -q 1; then
   info "Role 'grudge_backup_ro' already exists - skipping."
 else
-  psql_su -v pw="$BACKUP_PW" -c "CREATE ROLE grudge_backup_ro LOGIN PASSWORD :'pw'"
+  psql_su -v pw="$BACKUP_PW" <<'SQL'
+CREATE ROLE grudge_backup_ro LOGIN PASSWORD :'pw';
+SQL
 fi
 
 # Grants (safe to re-apply). Note FOR ROLE grudge, so tables the app creates in
