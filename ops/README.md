@@ -16,6 +16,24 @@ container's Proxmox ID.
 The real settings file, `grudge.env`, is sent separately — never through git,
 because it holds real passwords.
 
+## Fastest path: the install script
+
+`install.sh` does every step below that happens **on the container**, in order,
+so you don't have to run them by hand. First do the four things it can't do for
+you (they're outside the container): turn on container nesting from the Proxmox
+host (step 1 below), put the two files sent to you privately — `grudge.env` and
+`rclone.conf` — in the folder you'll run it from, point DNS at this server, and
+add the Google sign-in address (steps 1, 10, and the testing section). Then, on
+the container:
+
+```bash
+sudo DOMAIN=<domain> REPO_URL=<repo-url> ./install.sh
+```
+
+It asks for anything it still needs, stops immediately if the sandbox check
+fails, and is safe to run again if it stops partway. The numbered steps below
+are what it runs — read them if a step fails or you'd rather do it by hand.
+
 ## 1. Transfer — get it running
 
 Steps 1–4 are the go/no-go check. If step 4 fails, stop there: nothing after it

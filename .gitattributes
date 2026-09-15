@@ -1,0 +1,5 @@
+# Shell scripts run on the Linux production server - they must keep LF line
+# endings no matter what any contributor's git autocrlf setting is, or Linux
+# fails to run them with a "bad interpreter" error. (See ops/install.sh and
+# ops/backup/backup_db.sh.)
+*.sh text eol=lf
