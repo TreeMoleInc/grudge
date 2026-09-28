@@ -46,9 +46,53 @@ export function SimulateTab() {
     roomIdRef.current = roomId;
   }, [roomId]);
 
+  // Refetches the room's entries directly from the server, rather than
+  // relying solely on the WS `entries_update` broadcast. This closes a real
+  // race: a client's own action (join/remove) can complete - and the
+  // server's broadcast can fire - before that same client's own WebSocket
+  // has finished connecting (a fresh `useSimRoomSocket(roomId, ...)` handshake
+  // takes a moment after roomId is first set), so the client misses its own
+  // broadcast entirely and its entry silently never appears - this is what
+  // showed up as "the host can't add automata." A direct GET is idempotent
+  // (it replaces the whole list wholesale) so calling it alongside the WS
+  // broadcast can never produce duplicate entries, unlike combining a create
+  // response with the broadcast (see the join-by-code comment on handleJoin,
+  // and this file's own prior duplicate-entries fix from live-testing).
+  async function refreshRoom(id: UUID) {
+    try {
+      const room = await getSimRoom(id);
+      setEntries(room.entries);
+    } catch {
+      // Best-effort - the next WS broadcast or poll tick will catch up.
+    }
+  }
+
   useEffect(() => {
     if (!roomId) return;
-    getSimRoom(roomId).then((room) => setEntries(room.entries));
+    // Deliberately not `refreshRoom(roomId)` here: react-hooks' set-state-in-
+    // effect check flags a direct top-level call to a named async function
+    // that (anywhere in its own body) sets state, even though that setState
+    // only ever runs after `refreshRoom`'s own internal await - it doesn't
+    // flag the exact same eventual setEntries call when it's written as an
+    // inline `.then()`, which is a boundary the check does recognize.
+    getSimRoom(roomId)
+      .then((room) => setEntries(room.entries))
+      .catch(() => {
+        // Best-effort - the poll effect below or a WS broadcast will catch up.
+      });
+  }, [roomId]);
+
+  // Backstop for a WebSocket that never connects at all (a flaky network, or
+  // a proxy/firewall that strips the wss:// upgrade) - without this, a
+  // player in that situation never sees anyone else join either, not just
+  // their own entries. Mirrors RoomInvitesList's own poll below. Stops once
+  // the tournament starts (startedRef flips before the navigate() away).
+  useEffect(() => {
+    if (!roomId) return;
+    const interval = setInterval(() => {
+      if (!startedRef.current) refreshRoom(roomId);
+    }, 5000);
+    return () => clearInterval(interval);
   }, [roomId]);
 
   function resetToInitial() {
@@ -115,7 +159,17 @@ export function SimulateTab() {
     setError(null);
     try {
       const entry = await joinSimRoom(codeInput, automatonId);
-      if (!roomId) setRoomId(entry.sim_room_id);
+      if (!roomId) {
+        // Sets roomId, which triggers the hydration effect above - that
+        // already refetches entries, so no need to do it again here.
+        setRoomId(entry.sim_room_id);
+      } else {
+        // Already in the room (e.g. the owner adding a second automaton) -
+        // roomId isn't changing, so nothing else will refetch. See
+        // refreshRoom's own comment for why this can't be left to the WS
+        // broadcast alone.
+        await refreshRoom(roomId);
+      }
     } catch (err) {
       if (err instanceof ApiError && err.status === 409) {
         setError("That automaton is already in this room.");
@@ -136,6 +190,7 @@ export function SimulateTab() {
   async function handleRemove(entryId: UUID) {
     if (!roomId) return;
     await removeSimRoomEntry(roomId, entryId);
+    await refreshRoom(roomId);
   }
 
   async function handleStart() {

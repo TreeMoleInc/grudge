@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 
 from fastapi import APIRouter, Depends
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from grudge_backend.auth.dependencies import get_current_user
@@ -36,7 +36,11 @@ router = APIRouter(prefix="/friends", tags=["friends"])
 
 
 async def _get_user_by_username(db: AsyncSession, *, username: str) -> User:
-    result = await db.execute(select(User).where(User.username == username))
+    # Case-insensitive, matching the DB's own uniqueness guarantee
+    # (ux_users_username_lower, migration 0011 - at most one row can ever
+    # match) - a friend request shouldn't fail just because someone typed a
+    # name in different case than the account was created with.
+    result = await db.execute(select(User).where(func.lower(User.username) == username.lower()))
     user = result.scalar_one_or_none()
     if user is None:
         raise not_found("User not found.")

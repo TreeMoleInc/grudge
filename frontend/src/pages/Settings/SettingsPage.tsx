@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { deleteAccount, logout } from "../../api/auth";
+import { deleteAccount, logout, updateUsername } from "../../api/auth";
 import { ApiError } from "../../api/client";
 import { getFriendSettings, updateFriendSettings } from "../../api/friends";
 import type { FriendSettingsRead, GlobalVisibilityMode, UUID } from "../../api/types";
@@ -10,6 +10,8 @@ import { AutomataMultiPicker } from "../../components/AutomataMultiPicker";
 import { Button } from "../../components/Button";
 import { Panel } from "../../components/Panel";
 import { useConfirmDialog } from "../../components/ConfirmDialog";
+import { USERNAME_PATTERN } from "../../components/UsernamePrompt";
+import { useAuth } from "../../auth/useAuth";
 import { ME_QUERY_KEY } from "../../auth/AuthContext";
 import styles from "./SettingsPage.module.css";
 
@@ -70,6 +72,7 @@ export function AccountPanel() {
   return (
     <Panel>
       <h2>Account</h2>
+      <UsernameField />
       <div className={styles.accountActions}>
         <Button variant="secondary" onClick={handleLogout}>
           Log out
@@ -81,6 +84,75 @@ export function AccountPanel() {
       {deleteError && <p className={styles.error}>{deleteError}</p>}
       {dialog}
     </Panel>
+  );
+}
+
+function UsernameField() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const [value, setValue] = useState(user?.username ?? "");
+  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved">("idle");
+  const [error, setError] = useState<string | null>(null);
+
+  if (!user) return null;
+
+  const isValid = USERNAME_PATTERN.test(value);
+  const isUnchanged = value === user.username;
+
+  async function handleSave() {
+    if (!isValid || isUnchanged) return;
+    setSaveState("saving");
+    setError(null);
+    try {
+      // Writes the fresh server response straight into the shared /me cache
+      // rather than invalidateQueries - a background refetch there can lag
+      // behind (the exact Log-out bug this file's history already fixed),
+      // and every other place that reads the username (AppHeader, this
+      // field itself) should show the new name immediately, not on the
+      // query's own next refetch.
+      const updated = await updateUsername(value);
+      queryClient.setQueryData(ME_QUERY_KEY, updated);
+      setSaveState("saved");
+    } catch (err) {
+      setSaveState("idle");
+      if (err instanceof ApiError && err.status === 409) {
+        setError("That username is already taken.");
+      } else {
+        setError(
+          "Usernames must be 3-20 characters: letters, numbers, underscores, or hyphens only."
+        );
+      }
+    }
+  }
+
+  return (
+    <div className={styles.form}>
+      <label className={styles.formLabel}>
+        Username
+        <input
+          className={styles.textInput}
+          value={value}
+          maxLength={20}
+          onChange={(e) => {
+            setValue(e.target.value);
+            setSaveState("idle");
+            setError(null);
+          }}
+        />
+      </label>
+      <p className={styles.hint}>3-20 characters: letters, numbers, underscores, or hyphens.</p>
+      <div className={styles.actions}>
+        <Button
+          variant="primary"
+          onClick={handleSave}
+          disabled={!isValid || isUnchanged || saveState === "saving"}
+        >
+          {saveState === "saving" ? "Saving…" : "Save"}
+        </Button>
+        {saveState === "saved" && <span className={styles.hint}>Saved</span>}
+      </div>
+      {error && <p className={styles.error}>{error}</p>}
+    </div>
   );
 }
 

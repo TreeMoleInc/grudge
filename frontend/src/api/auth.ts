@@ -12,6 +12,14 @@ export async function fetchMe(): Promise<UserRead> {
   return apiFetch<UserRead>("/me");
 }
 
+// Currently the only editable per-account field - rating/created_at etc. are
+// system-managed, so this endpoint only ever takes a username (backend's
+// UsernameUpdate schema). Used by both the Settings page's own field and the
+// one-time post-signup prompt (components/UsernamePrompt.tsx).
+export async function updateUsername(username: string): Promise<UserRead> {
+  return apiFetch<UserRead>("/me", { method: "PATCH", body: { username } });
+}
+
 export async function logout(): Promise<void> {
   await apiFetch<void>("/auth/logout", { method: "POST" });
 }

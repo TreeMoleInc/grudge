@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Request, Response
 from fastapi.responses import RedirectResponse
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from grudge_backend.auth.dependencies import get_current_user
@@ -14,8 +14,9 @@ from grudge_backend.db import get_db
 from grudge_backend.exceptions import conflict
 from grudge_backend.models.user import AuthIdentity, User
 from grudge_backend.schemas.auth import ProviderUserInfo
-from grudge_backend.schemas.user import UserRead
+from grudge_backend.schemas.user import UsernameUpdate, UserRead
 from grudge_backend.services import account as account_service
+from grudge_backend.services import users as users_service
 
 router = APIRouter(tags=["auth"])
 
@@ -90,7 +91,15 @@ async def _unique_username(db: AsyncSession, base: str) -> str:
     candidate = base or "user"
     suffix = 0
     while True:
-        result = await db.execute(select(User.id).where(User.username == candidate))
+        # Case-insensitive, matching the DB's own uniqueness index
+        # (ux_users_username_lower, migration 0011) - a case-sensitive check
+        # here could generate a candidate that collides with an existing
+        # name differing only in case, which the index would then reject
+        # with an IntegrityError instead of this loop just trying the next
+        # suffix.
+        result = await db.execute(
+            select(User.id).where(func.lower(User.username) == candidate.lower())
+        )
         if result.scalar_one_or_none() is None:
             return candidate
         suffix += 1
@@ -110,6 +119,29 @@ async def logout(request: Request, db: AsyncSession = Depends(get_db)) -> Respon
 
 @router.get("/me", response_model=UserRead)
 async def me(current_user: User = Depends(get_current_user)) -> User:
+    return current_user
+
+
+@router.patch("/me", response_model=UserRead)
+async def update_me(
+    payload: UsernameUpdate,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> User:
+    """Only the username is editable here - the only per-account field this
+    app ever lets a player change themselves (rating/created_at etc. are
+    system-managed). Format is validated by the UsernameUpdate schema before
+    this ever runs; services/users.py only has to check it against everyone
+    else's name.
+    """
+    try:
+        await users_service.update_username(db, user=current_user, new_username=payload.username)
+    except users_service.UsernameTakenError as exc:
+        await db.rollback()
+        raise conflict(str(exc)) from exc
+
+    await db.commit()
+    await db.refresh(current_user)
     return current_user
 
 

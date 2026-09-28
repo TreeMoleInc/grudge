@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import uuid
 
-from sqlalchemy import ForeignKey, Integer, String, UniqueConstraint
+from sqlalchemy import Boolean, ForeignKey, Integer, String, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -12,7 +12,20 @@ from grudge_backend.models.base import Base, CreatedAtMixin, TimestampMixin, UUI
 class User(UUIDPKMixin, TimestampMixin, Base):
     __tablename__ = "users"
 
-    username: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
+    # NOT unique=True here - uniqueness is enforced by a case-insensitive
+    # functional index (ux_users_username_lower, migration 0011) instead of a
+    # plain column constraint, so "Joseph" and "joseph" can't coexist once a
+    # player can actually choose their own name. See that migration's
+    # docstring for why the index itself isn't declared in this model.
+    username: Mapped[str] = mapped_column(String(64), nullable=False)
+    # True until the player explicitly renames themselves via PATCH /me
+    # (services/users.py) - every account starts here, since the initial
+    # value is always the OAuth provider's email prefix (_unique_username in
+    # routers/auth.py), never a deliberate choice. The frontend uses this to
+    # show a one-time "choose a username" prompt after sign-in.
+    username_is_default: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default="true"
+    )
     # Informational only, populated from whichever provider first created the
     # account - deliberately NOT unique and NOT used as an identity/linking key.
     # See AuthIdentity for the actual login lookup.

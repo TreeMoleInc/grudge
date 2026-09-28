@@ -9,6 +9,10 @@ export type ISODateTime = string;
 export interface UserRead {
   id: UUID;
   username: string;
+  // True until the player explicitly renames themselves via PATCH /me -
+  // every account starts here (see backend/models/user.py, migration 0011).
+  // Drives the one-time "choose a username" prompt (components/UsernamePrompt.tsx).
+  username_is_default: boolean;
   avatar_url: string | null;
   rating: number;
   ranked_tournaments_played: number;

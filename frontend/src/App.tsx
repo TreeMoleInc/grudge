@@ -4,6 +4,7 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { AuthProvider } from "./auth/AuthProvider";
 import { RequireAuth } from "./auth/RequireAuth";
 import { HomePage } from "./pages/Home/HomePage";
+import { UsernamePrompt } from "./components/UsernamePrompt";
 
 // Route-level code splitting (Phase 7 perf pass, 2026-09-02): App.tsx used to
 // statically import every page, so the public/unauthenticated HomePage paid
@@ -39,6 +40,11 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <BrowserRouter>
+          {/* Mounted once here, as a sibling of <Routes> rather than inside
+              RequireAuth per-route - it must not unmount/remount (and lose
+              its own "skipped this session" state) on every single page
+              navigation. See UsernamePrompt.tsx's own docstring. */}
+          <UsernamePrompt />
           {/* fallback={null}: matches the "just don't render until ready"
               convention HomePage already uses for its own auth-loading state
               - route chunks are small/cached after first visit, so a blank
