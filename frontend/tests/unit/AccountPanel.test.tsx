@@ -14,7 +14,9 @@ import type { UserRead } from "../../src/api/types";
 // which reads the current user via useAuth() - a real AuthProvider (backed
 // by a mocked GET /me, not a hand-rolled context stub) is needed for every
 // test in this file as a result, not just ones that touch the username
-// field directly.
+// field directly. It also renders ActiveStatePanel, which fetches
+// GET /me/active-state - mocked here to an empty state so it renders
+// nothing (ActiveStatePanel.test.tsx covers its own non-empty behavior).
 const FAKE_USER: UserRead = {
   id: "11111111-1111-1111-1111-111111111111",
   username: "alice",
@@ -25,7 +27,12 @@ const FAKE_USER: UserRead = {
   created_at: "2026-01-01T00:00:00Z",
 };
 
-const server = setupServer(http.get(`${API_BASE_URL}/me`, () => HttpResponse.json(FAKE_USER)));
+const server = setupServer(
+  http.get(`${API_BASE_URL}/me`, () => HttpResponse.json(FAKE_USER)),
+  http.get(`${API_BASE_URL}/me/active-state`, () =>
+    HttpResponse.json({ queue_entry: null, sim_rooms: [], tournament_ids: [] })
+  )
+);
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
 afterEach(() => server.resetHandlers());
 afterAll(() => server.close());

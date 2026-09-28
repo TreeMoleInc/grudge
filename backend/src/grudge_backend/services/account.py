@@ -25,6 +25,7 @@ just because `user_id` goes to NULL on delete.
 from __future__ import annotations
 
 import uuid
+from dataclasses import dataclass
 
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -96,6 +97,90 @@ async def _is_currently_active(db: AsyncSession, *, user_id: uuid.UUID) -> bool:
         .limit(1)
     )
     return in_processing_tournament.scalar_one_or_none() is not None
+
+
+@dataclass
+class ActiveSimRoom:
+    room: SimRoom
+    is_owner: bool
+    entry_id: uuid.UUID | None  # this user's own entry in the room, if any
+
+
+@dataclass
+class ActiveState:
+    queue_entry: MatchmakingQueueEntry | None
+    sim_rooms: list[ActiveSimRoom]
+    tournament_ids: list[uuid.UUID]
+
+    def is_empty(self) -> bool:
+        return self.queue_entry is None and not self.sim_rooms and not self.tournament_ids
+
+
+async def get_active_state(db: AsyncSession, *, user_id: uuid.UUID) -> ActiveState:
+    """The same three conditions `_is_currently_active` checks, but returning
+    the real rows instead of a yes/no - powers a self-service "what's
+    blocking my account deletion" panel (Settings page). Added 2026-09-xx
+    after a real support case: a sim room's id lives only in the frontend's
+    own React state, never persisted anywhere - a room orphaned by a dropped
+    connection or a hard-closed tab (the owner never got to click "Leave
+    room") was previously undiscoverable and unleaveable without a direct
+    database query, even though `sim_rooms.leave_room` already handles
+    exactly this cleanup correctly once a client actually calls it.
+
+    Deliberately reuses the *same* queries `_is_currently_active` runs
+    (rather than a cheaper/different shape) so this can never disagree with
+    what actually blocks deletion - a player who clears everything this
+    returns is guaranteed `delete_account` will then succeed.
+    """
+    queue_result = await db.execute(
+        select(MatchmakingQueueEntry).where(
+            MatchmakingQueueEntry.user_id == user_id, MatchmakingQueueEntry.status == "waiting"
+        )
+    )
+    queue_entry = queue_result.scalar_one_or_none()
+
+    owned_result = await db.execute(
+        select(SimRoom).where(SimRoom.owner_user_id == user_id, SimRoom.status == "open")
+    )
+    owned_rooms = {room.id: room for room in owned_result.scalars().all()}
+
+    entry_result = await db.execute(
+        select(SimRoom, SimRoomEntry)
+        .join(SimRoomEntry, SimRoomEntry.sim_room_id == SimRoom.id)
+        .where(SimRoomEntry.user_id == user_id, SimRoom.status == "open")
+    )
+    # (room, entry) tuples, not just the entry - SimRoomEntry has no `sim_room`
+    # relationship declared (models/sim_room.py), so the room object has to
+    # come from this query's own join, not looked up off the entry afterward.
+    entries_by_room_id = {room.id: (room, entry) for room, entry in entry_result.all()}
+
+    # A union of the two SimRoom sets above, deduplicated by room id - an
+    # owner who's also entered their own automaton would otherwise show up
+    # as two separate rows for the same room.
+    rooms: list[ActiveSimRoom] = []
+    for room_id in owned_rooms.keys() | entries_by_room_id.keys():
+        owned_room = owned_rooms.get(room_id)
+        entry_pair = entries_by_room_id.get(room_id)
+        # room_id is drawn from the union of both dicts' keys, so at least
+        # one of owned_room/entry_pair is always present here.
+        room = owned_room if owned_room is not None else entry_pair[0]
+        rooms.append(
+            ActiveSimRoom(
+                room=room,
+                is_owner=owned_room is not None,
+                entry_id=entry_pair[1].id if entry_pair is not None else None,
+            )
+        )
+
+    tournaments_result = await db.execute(
+        select(Tournament.id).where(
+            Tournament.status.in_(_PROCESSING_TOURNAMENT_STATUSES),
+            Tournament.entrants.contains([{"user_id": str(user_id)}]),
+        )
+    )
+    tournament_ids = [row[0] for row in tournaments_result.all()]
+
+    return ActiveState(queue_entry=queue_entry, sim_rooms=rooms, tournament_ids=tournament_ids)
 
 
 async def _anonymize_tournament_history(db: AsyncSession, *, user_id: uuid.UUID) -> None:

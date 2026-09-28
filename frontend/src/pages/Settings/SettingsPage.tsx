@@ -5,6 +5,7 @@ import { deleteAccount, logout, updateUsername } from "../../api/auth";
 import { ApiError } from "../../api/client";
 import { getFriendSettings, updateFriendSettings } from "../../api/friends";
 import type { FriendSettingsRead, GlobalVisibilityMode, UUID } from "../../api/types";
+import { ActiveStatePanel } from "../../components/ActiveStatePanel";
 import { AppHeader } from "../../components/AppHeader";
 import { AutomataMultiPicker } from "../../components/AutomataMultiPicker";
 import { Button } from "../../components/Button";
@@ -82,6 +83,12 @@ export function AccountPanel() {
         </Button>
       </div>
       {deleteError && <p className={styles.error}>{deleteError}</p>}
+      {/* Shown right where a blocked deletion's 409 message appears, so the
+          exact thing standing in the way (and a button to clear it) is
+          right there - not just an error saying to "leave first" with no
+          way to discover what that even is (see ActiveStatePanel's own
+          docstring for the real support case this closes). */}
+      <ActiveStatePanel />
       {dialog}
     </Panel>
   );

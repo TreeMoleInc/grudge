@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import uuid
+
 from fastapi import APIRouter, Depends, Request, Response
 from fastapi.responses import RedirectResponse
+from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -19,6 +22,23 @@ from grudge_backend.services import account as account_service
 from grudge_backend.services import users as users_service
 
 router = APIRouter(tags=["auth"])
+
+
+class ActiveQueueEntryRead(BaseModel):
+    id: uuid.UUID
+    queue_type: str
+
+
+class ActiveSimRoomRead(BaseModel):
+    id: uuid.UUID
+    invite_code: str
+    is_owner: bool
+
+
+class ActiveStateRead(BaseModel):
+    queue_entry: ActiveQueueEntryRead | None
+    sim_rooms: list[ActiveSimRoomRead]
+    tournament_ids: list[uuid.UUID]
 
 
 @router.get("/auth/google/login")
@@ -143,6 +163,35 @@ async def update_me(
     await db.commit()
     await db.refresh(current_user)
     return current_user
+
+
+@router.get("/me/active-state", response_model=ActiveStateRead)
+async def get_my_active_state(
+    current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)
+) -> ActiveStateRead:
+    """Powers the Settings page's self-service "what's blocking my account
+    deletion" panel - real support case, 2026-09-28: a sim room orphaned by a
+    dropped connection or a hard-closed tab (the owner never got to click
+    "Leave room") is otherwise undiscoverable, since a room's id lives only
+    in the frontend's own React state and is never persisted anywhere.
+    Returns exactly the three conditions `DELETE /me` itself checks
+    (services/account.py's `get_active_state`, sharing the same queries as
+    `_is_currently_active`), so acting on everything this returns is
+    guaranteed to unblock a subsequent deletion.
+    """
+    state = await account_service.get_active_state(db, user_id=current_user.id)
+    return ActiveStateRead(
+        queue_entry=(
+            ActiveQueueEntryRead(id=state.queue_entry.id, queue_type=state.queue_entry.queue_type)
+            if state.queue_entry is not None
+            else None
+        ),
+        sim_rooms=[
+            ActiveSimRoomRead(id=r.room.id, invite_code=r.room.invite_code, is_owner=r.is_owner)
+            for r in state.sim_rooms
+        ],
+        tournament_ids=state.tournament_ids,
+    )
 
 
 @router.delete("/me", status_code=204)

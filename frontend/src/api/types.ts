@@ -19,6 +19,27 @@ export interface UserRead {
   created_at: ISODateTime;
 }
 
+// GET /me/active-state - the exact three conditions that block DELETE /me,
+// with enough detail (room ids, an entry's queue_type) to leave each one
+// from the UI. See backend/routers/auth.py's ActiveStateRead and
+// services/account.py's get_active_state.
+export interface ActiveQueueEntryRead {
+  id: UUID;
+  queue_type: string;
+}
+
+export interface ActiveSimRoomRead {
+  id: UUID;
+  invite_code: string;
+  is_owner: boolean;
+}
+
+export interface ActiveStateRead {
+  queue_entry: ActiveQueueEntryRead | null;
+  sim_rooms: ActiveSimRoomRead[];
+  tournament_ids: UUID[];
+}
+
 export interface FolderRead {
   id: UUID;
   user_id: UUID;

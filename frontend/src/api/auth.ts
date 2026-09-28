@@ -1,5 +1,5 @@
 import { API_BASE_URL, apiFetch } from "./client";
-import type { UserRead } from "./types";
+import type { ActiveStateRead, UserRead } from "./types";
 
 // Full-page navigation, not a fetch call - hits the backend's OAuth redirect
 // endpoint directly (see CLAUDE.md §2 and the Phase 4 plan). GitHub had one of
@@ -29,4 +29,11 @@ export async function logout(): Promise<void> {
 // in an active queue/room/tournament.
 export async function deleteAccount(): Promise<void> {
   await apiFetch<void>("/me", { method: "DELETE" });
+}
+
+// Powers the Settings page's "what's blocking my deletion" panel - the exact
+// three conditions deleteAccount's 409 refers to, with enough detail to
+// leave each one (components/ActiveStatePanel.tsx).
+export async function fetchActiveState(): Promise<ActiveStateRead> {
+  return apiFetch<ActiveStateRead>("/me/active-state");
 }
