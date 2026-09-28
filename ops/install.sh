@@ -32,12 +32,12 @@
 #      (/opt/grudge/ops); set SECRETS_DIR=/path/to/folder to point elsewhere.
 #
 #   4. Point two DNS records at this server's public IP:
-#        grudge.<domain>       and       api.grudge.<domain>
+#        grudge.<domain>       and       api-grudge.<domain>
 #      (Needed for HTTPS in step 10. The app still installs without it; it
 #      just can't get certificates until DNS is live.)
 #
 #   5. Add the production sign-in address in Google Cloud Console:
-#        https://api.grudge.<domain>/auth/google/callback
+#        https://api-grudge.<domain>/auth/google/callback
 #      (Sign-in won't work until this is added - separate from the server.)
 #
 # ---------------------------------------------------------------------------
@@ -49,7 +49,7 @@
 # ahead of time as environment variables to run it unattended:
 #
 #   DOMAIN         the domain the two subdomains live under, e.g. example.com
-#                  (the script builds grudge.<domain> and api.grudge.<domain>)
+#                  (the script builds grudge.<domain> and api-grudge.<domain>)
 #   SECRETS_DIR    where grudge.env and rclone.conf are (default: this folder)
 #   BEHIND_PROXY   set to 1 if another reverse proxy already handles HTTPS for
 #                  your containers - Caddy then serves plain http on port 80 and
@@ -86,7 +86,7 @@ step "Checking what's needed"
 ask DOMAIN "Domain (e.g. example.com, no https:// and no 'grudge.' prefix)"
 [ -n "$DOMAIN" ] || die "A domain is required."
 FRONTEND_URL="https://grudge.${DOMAIN}"
-BACKEND_URL="https://api.grudge.${DOMAIN}"
+BACKEND_URL="https://api-grudge.${DOMAIN}"
 
 # The code must already be cloned to /opt/grudge (you do that yourself, with
 # your own GitHub access - see the header). Everything downstream expects it
@@ -291,7 +291,7 @@ sudo -u grudge -H bash -c 'cd /opt/grudge/frontend && npm ci'
 sudo -u grudge -H env VITE_API_BASE_URL="$BACKEND_URL" bash -c 'cd /opt/grudge/frontend && npm run build'
 
 # The backend address is baked into the site at build time - confirm it went in.
-if grep -l "api.grudge" /opt/grudge/frontend/dist/assets/*.js >/dev/null 2>&1; then
+if grep -l "api-grudge" /opt/grudge/frontend/dist/assets/*.js >/dev/null 2>&1; then
   info "Website built, backend address baked in correctly."
 else
   die "Website built but the backend address didn't get baked in - check VITE_API_BASE_URL."
@@ -329,18 +329,18 @@ fi
 
 # Build the Caddyfile from the template with the real subdomains filled in.
 sed -e "s|grudge\.example\.com|grudge.${DOMAIN}|g" \
-    -e "s|api\.grudge\.example\.com|api.grudge.${DOMAIN}|g" \
+    -e "s|api\.grudge\.example\.com|api-grudge.${DOMAIN}|g" \
     /opt/grudge/ops/deploy/Caddyfile.example > /etc/caddy/Caddyfile
 if [ "$BEHIND_PROXY" = "1" ]; then
   # Prefix both site addresses with http:// so Caddy serves plain HTTP on port
   # 80 and doesn't try to get its own certificates - your main proxy handles
   # HTTPS and forwards both subdomains here.
-  sed -i -E "s|^(grudge\.${DOMAIN}) \{|http://\1 {|; s|^(api\.grudge\.${DOMAIN}) \{|http://\1 {|" /etc/caddy/Caddyfile
+  sed -i -E "s|^(grudge\.${DOMAIN}) \{|http://\1 {|; s|^(api-grudge\.${DOMAIN}) \{|http://\1 {|" /etc/caddy/Caddyfile
   warn "Behind-proxy mode: point your main reverse proxy at this container's port 80,"
   warn "keeping the original hostname and allowing WebSockets, for both subdomains."
 fi
 systemctl reload caddy || systemctl restart caddy
-info "Caddy configured for grudge.${DOMAIN} and api.grudge.${DOMAIN}."
+info "Caddy configured for grudge.${DOMAIN} and api-grudge.${DOMAIN}."
 info "HTTPS certificates are issued automatically once DNS points here and ports 80/443 are open."
 
 # ===========================================================================
@@ -392,7 +392,7 @@ cat <<EOF
 
   What's left, and only you can do it (see README.md sections 1 & 2):
 
-    * DNS: point  grudge.${DOMAIN}  and  api.grudge.${DOMAIN}  at this
+    * DNS: point  grudge.${DOMAIN}  and  api-grudge.${DOMAIN}  at this
       server's public IP, and make sure ports 80 and 443 reach this container.
       HTTPS certificates appear on their own once that's live.
 

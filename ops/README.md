@@ -124,7 +124,7 @@ Change the two `https://CHANGEME` lines to the real addresses:
 
 ```
 FRONTEND_BASE_URL=https://grudge.<domain>
-BACKEND_BASE_URL=https://api.grudge.<domain>
+BACKEND_BASE_URL=https://api-grudge.<domain>
 ```
 
 The backup job's settings, from the template, with a fresh password for its
@@ -197,7 +197,7 @@ curl -fsSL https://deb.nodesource.com/setup_24.x | sudo -E bash -
 sudo apt install -y nodejs
 cd /opt/grudge/frontend
 sudo -u grudge -H npm ci
-sudo -u grudge -H env VITE_API_BASE_URL=https://api.grudge.<domain> npm run build
+sudo -u grudge -H env VITE_API_BASE_URL=https://api-grudge.<domain> npm run build
 ```
 
 `VITE_API_BASE_URL` is baked into the website when it's built. Without it, the
@@ -206,7 +206,7 @@ site loads but can't talk to the backend — every request would go to
 at least one file name):
 
 ```bash
-grep -l "api.grudge" /opt/grudge/frontend/dist/assets/*.js
+grep -l "api-grudge" /opt/grudge/frontend/dist/assets/*.js
 ```
 
 ### 9. Start the app
@@ -225,10 +225,20 @@ crash or a reboot. If one isn't running, its log says why:
 ### 10. Domain and HTTPS
 
 Two DNS records, both pointing at this server's public IP address:
-`grudge.<domain>` (the website) and `api.grudge.<domain>` (the backend). Two
+`grudge.<domain>` (the website) and `api-grudge.<domain>` (the backend). Two
 rather than one because the backend's routes aren't all under one shared path,
 so splitting by subdomain needs no code changes. Ports 80 and 443 have to reach
 this container — the HTTPS certificates are issued over them.
+
+The backend's subdomain is `api-grudge.<domain>`, not `api.grudge.<domain>`,
+on purpose — if the domain sits behind Cloudflare (proxied DNS, or a Tunnel
+like the one used the first time this was deployed), Cloudflare's free
+certificate only covers the bare domain plus one wildcard level
+(`*.<domain>`). A two-level name gets no certificate there and every request
+to it fails with a TLS error in the browser — this is exactly what happened
+on 2026-09-16, and moving to a single-level name fixed it. If DNS isn't
+behind Cloudflare this doesn't matter, but there's no downside to it either
+way, so it's the default everywhere in this checklist and in `install.sh`.
 
 Install Caddy, a web server that handles HTTPS certificates automatically:
 
