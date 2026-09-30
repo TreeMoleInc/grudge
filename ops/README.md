@@ -37,6 +37,15 @@ sign-in address (steps 1, 10, and the testing section) — so do those too. The
 numbered steps below are what the script runs; read them if a step fails or
 you'd rather do it by hand.
 
+**Already installed and just need the latest fix?** Use `update.sh` instead —
+it pulls the newest code, applies any new database changes, rebuilds the
+website, and restarts everything. Doesn't touch anything `install.sh` only
+does once (packages, users, Postgres roles, Caddy, backups).
+
+```bash
+sudo /opt/grudge/ops/update.sh
+```
+
 ## 1. Transfer — get it running
 
 Steps 1–4 are the go/no-go check. If step 4 fails, stop there: nothing after it
