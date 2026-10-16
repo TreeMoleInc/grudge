@@ -9,3 +9,14 @@
 # kept locally (still actively used to track the project), just not shared.
 CLAUDE.md
 TODO.md
+
+# Real secrets and private scratch work. These belong OUTSIDE the repo
+# (C:\Users\Josep\Documents\), but they have turned up inside the working
+# tree before - ignored here as a safety net so a broad `git add .` can
+# never publish grudge.env / rclone.conf.
+grudge-secrets/
+grudge-experiments/
+*.env
+rclone.conf
+!*.env.example
+!rclone.conf.example
