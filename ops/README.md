@@ -37,14 +37,19 @@ sign-in address (steps 1, 10, and the testing section) — so do those too. The
 numbered steps below are what the script runs; read them if a step fails or
 you'd rather do it by hand.
 
-**Already installed and just need the latest fix?** Use `update.sh` instead —
-it pulls the newest code, applies any new database changes, rebuilds the
-website, and restarts everything. Doesn't touch anything `install.sh` only
-does once (packages, users, Postgres roles, Caddy, backups).
+**Already installed and just need the latest fix?** Use `pull-and-update.sh`
+instead — it downloads the newest code from GitHub, applies any new database
+changes, rebuilds the website, and restarts everything. Doesn't touch anything
+`install.sh` only does once (packages, users, Postgres roles, Caddy, backups).
 
 ```bash
-sudo /opt/grudge/ops/update.sh
+sudo /opt/grudge/ops/pull-and-update.sh
 ```
+
+Run it as root via `sudo`, by whoever cloned the repo (that account has the
+GitHub access). It's two scripts on purpose: `pull-and-update.sh` downloads,
+then hands over to `update.sh`, which deploys whatever is already on disk
+(`sudo /opt/grudge/ops/update.sh` on its own is fine if you pulled by hand).
 
 ## 1. Transfer — get it running
 
