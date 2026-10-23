@@ -44,12 +44,30 @@ sudo -u grudge -H bash -c "cd '$CODE_DIR/backend' && .venv/bin/pip install -q -e
 BACKEND_URL="$(grep '^BACKEND_BASE_URL=' /etc/grudge.env | cut -d= -f2-)"
 [ -n "$BACKEND_URL" ] || die "Could not read BACKEND_BASE_URL from /etc/grudge.env."
 sudo -u grudge -H bash -c "cd '$CODE_DIR/frontend' && npm ci"
-sudo -u grudge -H env VITE_API_BASE_URL="$BACKEND_URL" bash -c "cd '$CODE_DIR/frontend' && npm run build"
-if grep -rl "$(echo "$BACKEND_URL" | sed -E 's|https?://||')" "$CODE_DIR/frontend/dist/assets/"*.js >/dev/null 2>&1; then
-  info "Website rebuilt, backend address confirmed baked in."
-else
-  die "Website rebuilt but the backend address didn't get baked in - check BACKEND_BASE_URL in /etc/grudge.env."
+
+# Build into a STAGING folder (dist.new), check it, and only then swap it in
+# as the live site (dist - what Caddy serves). Building straight into dist
+# meant a failed check below left the broken build live anyway: a site built
+# without the backend address silently points every visitor's browser at
+# http://localhost:8000 (their own computer), which can leave the page blank.
+sudo -u grudge -H bash -c "rm -rf '$CODE_DIR/frontend/dist.new'"
+sudo -u grudge -H env VITE_API_BASE_URL="$BACKEND_URL" bash -c "cd '$CODE_DIR/frontend' && npm run build -- --outDir dist.new --emptyOutDir"
+
+API_HOST="$(echo "$BACKEND_URL" | sed -E 's|https?://||')"
+if ! grep -rlF "$API_HOST" "$CODE_DIR/frontend/dist.new/assets/"*.js >/dev/null 2>&1; then
+  rm -rf "$CODE_DIR/frontend/dist.new"
+  die "The new website build is missing the backend address ($API_HOST), so it was NOT put live - the site is still running its previous version. Check BACKEND_BASE_URL in /etc/grudge.env."
 fi
+if grep -rlF "localhost:8000" "$CODE_DIR/frontend/dist.new/assets/"*.js >/dev/null 2>&1; then
+  rm -rf "$CODE_DIR/frontend/dist.new"
+  die "The new website build still points at localhost:8000, so it was NOT put live - the site is still running its previous version."
+fi
+
+rm -rf "$CODE_DIR/frontend/dist.old"
+[ -d "$CODE_DIR/frontend/dist" ] && mv "$CODE_DIR/frontend/dist" "$CODE_DIR/frontend/dist.old"
+mv "$CODE_DIR/frontend/dist.new" "$CODE_DIR/frontend/dist"
+rm -rf "$CODE_DIR/frontend/dist.old"
+info "Website rebuilt and put live, backend address confirmed baked in."
 
 step "3/3  Restarting services"
 systemctl restart grudge-backend grudge-worker grudge-watchdog
